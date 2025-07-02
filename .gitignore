@@ -1,3 +1,7 @@
+js-pnpm-setup
+python-poetry-setup
+python-uv-setup
+
 ### IntelliJ IDEA project files ###
 .idea/
 *.iws

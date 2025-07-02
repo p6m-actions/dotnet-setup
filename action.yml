@@ -1,36 +1,94 @@
-name: "Dotnet Setup"
-description: "A simple GitHub Action that prints a greeting"
-author: "Jimmie Fulton <jimmie.fulton@gmail.com>"
+name: ".NET Setup"
+description: "Setup .NET SDK with caching for faster builds"
+author: "Jimmie Fulton <jimmie@ybor.ai>"
 
 # Define the inputs for this action
 inputs:
-  who-to-greet:
-    description: "Who to greet"
-    required: true
-    default: "World"
-  message:
-    description: "Custom message to include"
+  dotnet-version:
+    description: ".NET SDK version to install"
     required: false
-    default: "Hello"
+    default: "latest"
+  global-json-file:
+    description: "Path to global.json file to read version from"
+    required: false
+  cache:
+    description: "Enable NuGet package caching"
+    required: false
+    default: "true"
+  install-dependencies:
+    description: "Restore NuGet packages after setup"
+    required: false
+    default: "true"
 
 # Define the outputs for this action
 outputs:
-  time:
-    description: "The time we greeted you"
-    value: ${{ steps.hello.outputs.time }}
+  dotnet-version:
+    description: "The installed .NET SDK version"
+    value: ${{ steps.version-output.outputs.dotnet-version }}
+  cache-hit:
+    description: "Whether the NuGet cache was hit"
+    value: ${{ steps.cache.outputs.cache-hit }}
+  nuget-cache-dir:
+    description: "Path to the NuGet cache directory"
+    value: ${{ steps.nuget-cache-dir.outputs.nuget-cache-dir }}
 
 # Define the runs configuration
 runs:
   using: "composite"
   steps:
-    - name: Hello step
-      id: hello
+    - name: Setup .NET SDK
+      id: setup
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+        global-json-file: ${{ inputs.global-json-file }}
+        cache: false
+
+    - name: Get NuGet cache directory
+      id: nuget-cache-dir
       shell: bash
       run: |
-        echo "${{ inputs.message }}, ${{ inputs.who-to-greet }}!"
-        echo "time=$(date)" >> $GITHUB_OUTPUT
+        if command -v dotnet &> /dev/null; then
+          NUGET_CACHE_DIR=$(dotnet nuget locals global-packages --list | cut -d' ' -f2)
+          echo "dir=$NUGET_CACHE_DIR" >> $GITHUB_OUTPUT
+          echo "nuget-cache-dir=$NUGET_CACHE_DIR" >> $GITHUB_OUTPUT
+        else
+          echo "dir=$HOME/.nuget/packages" >> $GITHUB_OUTPUT
+          echo "nuget-cache-dir=$HOME/.nuget/packages" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Cache NuGet packages
+      id: cache
+      if: inputs.cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.nuget-cache-dir.outputs.dir }}
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.fsproj', '**/*.vbproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      if: inputs.install-dependencies == 'true'
+      shell: bash
+      run: |
+        if find . -maxdepth 1 -name "*.sln" -print -quit | grep -q .; then
+          echo "Found solution file, restoring..."
+          dotnet restore
+        elif find . -name "*.csproj" -o -name "*.fsproj" -o -name "*.vbproj" | head -1 | read -r project; then
+          echo "Found project files, restoring..."
+          dotnet restore
+        else
+          echo "No .NET solution or project files found, skipping restore"
+        fi
+
+    - name: Output installed version
+      id: version-output
+      shell: bash
+      run: |
+        INSTALLED_VERSION=$(dotnet --version)
+        echo "dotnet-version=$INSTALLED_VERSION" >> $GITHUB_OUTPUT
 
 # Define the branding for the action in the GitHub Marketplace
 branding:
-  icon: "award"
-  color: "blue"
+  icon: "package"
+  color: "purple"
