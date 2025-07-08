@@ -19,7 +19,7 @@ A GitHub Action that sets up the .NET SDK with intelligent caching for faster bu
 
 | Name | Description | Required | Default |
 |------|-------------|----------|---------|
-| `dotnet-version` | .NET SDK version to install | No | `latest` |
+| `dotnet-version` | .NET SDK version to install | No | `8.0.x` |
 | `global-json-file` | Path to global.json file to read version from | No | |
 | `cache` | Enable NuGet package caching | No | `true` |
 | `install-dependencies` | Restore NuGet packages after setup | No | `true` |
