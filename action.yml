@@ -38,7 +38,7 @@ runs:
   steps:
     - name: Setup .NET SDK
       id: setup
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
         global-json-file: ${{ inputs.global-json-file }}
@@ -60,7 +60,7 @@ runs:
     - name: Cache NuGet packages
       id: cache
       if: inputs.cache == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ steps.nuget-cache-dir.outputs.dir }}
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json', '**/*.csproj', '**/*.fsproj', '**/*.vbproj') }}
